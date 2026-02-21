@@ -11,8 +11,13 @@
 
 // Set max/min x position to be the edges of the display
 static constexpr int HALF_SCREEN_WIDTH = bn::display::width() / 2;
+static constexpr int HALF_SCREEN_HEIGHT = bn::display::height() / 2;
 static constexpr bn::fixed MIN_X = -HALF_SCREEN_WIDTH;
 static constexpr bn::fixed MAX_X = HALF_SCREEN_WIDTH;
+static constexpr bn::fixed MIN_Y = -HALF_SCREEN_HEIGHT;
+static constexpr bn::fixed MAX_Y = HALF_SCREEN_HEIGHT;
+
+bn::random rng = bn::random();
 
 // Starting speed of a bouncer
 static constexpr bn::fixed BASE_SPEED = 2;
@@ -24,15 +29,14 @@ class Bouncer
 {
 public:
     bn::sprite_ptr sprite = bn::sprite_items::dot.create_sprite();
-    bn::fixed x_speed = BASE_SPEED;
+    bn::fixed x_speed = rng.get_fixed(1, 3);
+    bn::fixed y_speed = rng.get_fixed(1, 3);
 
     void update()
     {
         bn::fixed x = sprite.x();
-
         // Update x position by adding speed
         x += x_speed;
-
         // If we've gone off the screen on the right
         if (x > MAX_X)
         {
@@ -47,30 +51,69 @@ public:
             x = MIN_X;
             x_speed *= -1;
         }
-
         sprite.set_x(x);
+
+        // UPDATE THE Y NOW
+        bn::fixed y = sprite.y();
+        // Update x position by adding speed
+        y += y_speed;
+        // If we've gone off the screen on the right
+        if (y > MAX_Y)
+        {
+            // Snap back to screen and reverse direction
+            y = MAX_Y;
+            y_speed *= -1;
+        }
+        // If we've gone off the screen on the left
+        if (y < MIN_Y)
+        {
+            // Snap back to screen and reverse direction
+            y = MIN_Y;
+            y_speed *= -1;
+        }
+        sprite.set_y(y);
     }
 };
 
-bn::fixed avarage_x(bn::vector<bn::sprite_ptr, MAX_BOUNCERS> sprites)
+bn::fixed avarage_x(bn::vector<Bouncer, MAX_BOUNCERS> bouncers)
 {
     // Add all x positions together
     bn::fixed x_sum = 0;
-    for (bn::sprite_ptr sprite : sprites)
+    for (Bouncer bouncer : bouncers)
     {
-        x_sum += sprite.x();
+        x_sum += bouncer.sprite.x();
     }
 
     bn::fixed x_average = x_sum;
 
     // Only divide if we have 1 or more
     // Prevents division by 0
-    if (sprites.size() > 0)
+    if (bouncers.size() > 0)
     {
-        x_average /= sprites.size();
+        x_average /= bouncers.size();
     }
 
     return x_average;
+}
+bn::fixed avarage_y(bn::vector<Bouncer, MAX_BOUNCERS> bouncers)
+{
+    // Add all x positions together
+    bn::fixed y_sum = 0;
+    for (Bouncer bouncer : bouncers)
+    {
+        y_sum += bouncer.sprite.y();
+    }
+
+    bn::fixed y_average = y_sum;
+
+    // Only divide if we have 1 or more
+    // Prevents division by 0
+    if (bouncers.size() > 0)
+    {
+        y_average /= bouncers.size();
+    }
+
+    return y_average;
 }
 
 void add_bouncer(bn::vector<Bouncer, MAX_BOUNCERS> &bouncers)
@@ -88,6 +131,9 @@ int main()
 
     bn::vector<Bouncer, MAX_BOUNCERS> bouncers = {};
 
+    // Cousning an issue
+    bn::sprite_ptr avg_sprite = bn::sprite_items::dot.create_sprite();
+
     while (true)
     {
         // if A is pressed add a new bouncer
@@ -98,8 +144,8 @@ int main()
 
         if (bn::keypad::b_pressed())
         {
-            // bn::fixed avarage = avarage_x(sprites);
-            // BN_LOG("Avarage X:", avarage);
+
+            BN_LOG("Avarage X:", avarage_x(bouncers));
         }
 
         // for each bouncer
@@ -107,6 +153,10 @@ int main()
         {
             bouncer.update();
         }
+
+        // update avarage bouncer
+        avg_sprite.set_x(avarage_x(bouncers));
+        avg_sprite.set_y(avarage_y(bouncers));
 
         bn::core::update();
     }
